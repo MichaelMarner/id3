@@ -1,4 +1,4 @@
-var Genres = [
+export const Genres = [
 	'Blues',
 	'Classic Rock',
 	'Country',
@@ -149,5 +149,3 @@ var Genres = [
 	'Synthpop',
 	'Rock/Pop'
 ];
-
-module.exports = Genres;

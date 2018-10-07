@@ -1,10 +1,12 @@
-var DataView = require('./dataview-extra');
-var ID3Frame = require('./id3frame');
+import { EnhancedDataView } from './dataview-extra';
+import { Genres } from './genres';
+import { ID3Frame } from './id3frame';
 
-var ID3Tag = {};
+export class ID3Tag {
 
-ID3Tag.parse = function(handle, callback) {
-	var tags = {
+
+static parse(handle:any, callback:Function) {
+	var tags: any = {
 			title: null,
 			album: null,
 			artist: null,
@@ -26,7 +28,7 @@ ID3Tag.parse = function(handle, callback) {
 			v1: false,
 			v2: false
 		},
-		process = function(err) {
+		process = function(err?:any) {
 			if(processed.v1 && processed.v2) {
 				tags.title = tags.v2.title || tags.v1.title;
 				tags.album = tags.v2.album || tags.v1.album;
@@ -38,12 +40,12 @@ ID3Tag.parse = function(handle, callback) {
 	/*
 	 * Read the last 128 bytes (ID3v1)
 	 */
-	handle.read(128, handle.size - 128, function(err, buffer) {
+	handle.read(128, handle.size - 128, function(err:any, buffer:ArrayBuffer) {
 		if(err) {
 			return process('Could not read file');
 		}
-		var dv = new DataView(buffer);
-		if(buffer.byteLength !== 128 || dv.getString(3, null, true) !== 'TAG') {
+		var dv = new EnhancedDataView(buffer);
+		if(buffer.byteLength !== 128 || dv.getString(3, undefined, true) !== 'TAG') {
 			processed.v1 = true;
 			return process();
 		}
@@ -72,11 +74,11 @@ ID3Tag.parse = function(handle, callback) {
 	 * Read 14 bytes (10 for ID3v2 header, 4 for possible extended header size)
 	 * Assuming the ID3v2 tag is prepended
 	 */
-	handle.read(14, 0, function(err, buffer) {
+	handle.read(14, 0, function(err:any, buffer: ArrayBuffer) {
 		if(err) {
 			return process('Could not read file');
 		}
-		var dv = new DataView(buffer),
+		var dv = new EnhancedDataView(buffer),
 			headerSize = 10,
 			tagSize = 0,
 			tagFlags;
@@ -84,7 +86,7 @@ ID3Tag.parse = function(handle, callback) {
 		 * Be sure that the buffer is at least the size of an id3v2 header
 		 * Assume incompatibility if a major version of > 4 is used
 		 */
-		if(buffer.byteLength !== 14 || dv.getString(3, null, true) !== 'ID3' || dv.getUint8(3) > 4) {
+		if(buffer.byteLength !== 14 || dv.getString(3, undefined, true) !== 'ID3' || dv.getUint8(3) > 4) {
 			processed.v2 = true;
 			return process();
 		}
@@ -110,12 +112,12 @@ ID3Tag.parse = function(handle, callback) {
 		 * Calculate the tag size to be read
 		 */
 		tagSize += dv.getUint32Synch(6);
-		handle.read(tagSize, headerSize, function(err, buffer) {
+		handle.read(tagSize, headerSize, (err:any, buffer:any) => {
 			if(err) {
 				processed.v2 = true;
 				return process();
 			}
-			var dv = new DataView(buffer),
+			var dv = new EnhancedDataView(buffer),
 				position = 0;
 			while(position < buffer.byteLength) {
 				var frame,
@@ -150,4 +152,4 @@ ID3Tag.parse = function(handle, callback) {
 	});
 };
 
-module.exports = ID3Tag;
+}
