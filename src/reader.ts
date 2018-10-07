@@ -16,53 +16,56 @@ export enum SourceType {
 }
 
 export class Reader {
-  private size: number | undefined;
+  private _size = 0;
   private file: any = null;
   private fd: any;
+
+  public get size() {
+    return this._size;
+  }
 
   constructor(public type = SourceType.OPEN_URI) {}
 
   public open(file: any) {
-		this.file = file;
-		return new Promise( (resolve, reject) => {
-
-    switch (this.type) {
-      case SourceType.OPEN_LOCAL:
-        fs.stat(this.file, (err: any, stat: any) => {
-          if (err) {
-            return reject(err);
-          }
-          this.size = stat.size;
-          fs.open(this.file, 'r', (err: any, fd: any) => {
+    this.file = file;
+    return new Promise((resolve, reject) => {
+      switch (this.type) {
+        case SourceType.OPEN_LOCAL:
+          fs.stat(this.file, (err: any, stat: any) => {
             if (err) {
               return reject(err);
             }
-            this.fd = fd;
-            resolve();
+            this._size = stat.size;
+            fs.open(this.file, 'r', (err: any, fd: any) => {
+              if (err) {
+                return reject(err);
+              }
+              this.fd = fd;
+              resolve();
+            });
           });
-        });
-        break;
-      case SourceType.OPEN_FILE:
-        this.size = this.file.size;
-        resolve();
-        break;
-      default:
-        this.ajax(
-          {
-            uri: this.file,
-            type: 'HEAD'
-          },
-          (err: any, resp: any, xhr: any) => {
-            if (err) {
-              return reject(err);
+          break;
+        case SourceType.OPEN_FILE:
+          this._size = this.file.size;
+          resolve();
+          break;
+        default:
+          this.ajax(
+            {
+              uri: this.file,
+              type: 'HEAD'
+            },
+            (err: any, resp: any, xhr: any) => {
+              if (err) {
+                return reject(err);
+              }
+              this._size = parseInt(xhr.getResponseHeader('Content-Length'));
+              resolve();
             }
-            this.size = parseInt(xhr.getResponseHeader('Content-Length'));
-            resolve();
-          }
-        );
-        break;
-    }
-		});
+          );
+          break;
+      }
+    });
   }
 
   public ajax(opts: { [id: string]: any }, callback: Function) {
@@ -112,10 +115,7 @@ export class Reader {
     return Promise.resolve();
   }
 
-  public async read(
-    length: number,
-    position: number,
-  ){
+  public async read(length: number, position: number): Promise<ArrayBuffer> {
     if (this.type === SourceType.OPEN_LOCAL) {
       return await this.readLocal(length, position);
     } else if (this.type === SourceType.OPEN_FILE) {
@@ -128,16 +128,16 @@ export class Reader {
   private async readBlob(
     length: number,
     position: number,
-    type: string = 'application/octet-stream',
+    type: string = 'application/octet-stream'
   ) {
-		let data:any = await this.read(length, position) 
-		return new Blob([data], { type: type });
+    let data: any = await this.read(length, position);
+    return new Blob([data], { type: type });
   }
 
   /*
  * Local reader
  */
-  private readLocal(length: number, position: number) {
+  private readLocal(length: number, position: number): Promise<ArrayBuffer> {
     return new Promise((resolve, reject) => {
       var buffer = new Buffer(length);
       fs.read(this.fd, buffer, 0, length, position, function(
@@ -162,7 +162,7 @@ export class Reader {
  * URL reader
  */
 
-  private readUri(length: number, position: number) {
+  private readUri(length: number, position: number): Promise<ArrayBuffer> {
     return new Promise((resolve, reject) => {
       this.ajax(
         {
@@ -175,7 +175,7 @@ export class Reader {
           if (err) {
             return reject(err);
           }
-          return resolve(buffer);
+          return resolve(<any>buffer);
         }
       );
     });
@@ -184,7 +184,7 @@ export class Reader {
   /*
  * File API reader
  */
-  private readFile(length: number, position: number): Promise<ProgressEvent> {
+  private readFile(length: number, position: number): Promise<ArrayBuffer> {
     return new Promise((resolve, reject) => {
       var slice = this.file.slice(position, position + length),
         fr = new FileReader();
