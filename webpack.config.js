@@ -6,9 +6,11 @@ module.exports = {
   output: {
     path: path.resolve(__dirname, 'dist'),
     filename: 'id3.js',
+    library: 'id3js',
     libraryTarget: 'umd',
-    library: 'id3'
+    globalObject: 'this',
   },
+  target: 'node',
   node: {
     fs: 'empty'
   }
